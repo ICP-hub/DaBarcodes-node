@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 
-app.use('/api', productRoutes);
+app.use('/product', productRoutes);
 
 app.get("/", (req, res) => {
   return res.send("Hi Everyone.");
