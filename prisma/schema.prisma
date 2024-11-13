@@ -21,6 +21,7 @@ model Product {
   brandName        String
   subBrandName     String?
   price            Float
+  weight           String
   promotionPrice   Float?
   supplierName     String
   storeId          String

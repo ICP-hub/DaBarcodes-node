@@ -1,6 +1,5 @@
-const { default: prisma } = require("../DB/dbconfig");
+const prisma = require("../DB/dbconfig");
 
-// Create a new product
 exports.createProduct = async (req, res) => {
   const {
     name,
@@ -44,11 +43,13 @@ exports.createProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const products = await prisma.product.findMany();
+   
+
     res.status(200).json(products);
   } catch (error) {
     res
       .status(500)
-      .json({ error: "Error retrieving products", details: error.message });
+      .json({ error: "Error retrieving product", details: error.message });
   }
 };
 
