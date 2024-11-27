@@ -7,8 +7,14 @@ const productRoutes = require("./Routes/product");
 // * Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',  // Your React app's local URL
+    'https://demo4.kaifoundry.com'  // Your actual domain if different
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use("/product", productRoutes);
 
 app.get("/", (req, res) => {
