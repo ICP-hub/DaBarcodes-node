@@ -8,13 +8,7 @@ const productRoutes = require("./Routes/product");
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use(
-  cors({
-    origin: "http://localhost:3000",
-    credentials: true,
-  })
-);
-
+app.use(cors());
 app.use("/product", productRoutes);
 
 app.get("/", (req, res) => {
