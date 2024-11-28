@@ -1,31 +1,4 @@
 const prisma = require("../DB/dbconfig");
-const { imageUploadUtil } = require("../utils/cloudinary");
-exports.handleImageUpload = async (req, res) => {
-  try {
-    const b64 = Buffer.from(req.file.buffer).toString("base64");
-    const url = "data:" + req.file.mimetype + ";base64," + b64;
-    const result = await imageUploadUtil(url);
-
-    // Assuming `result` contains the URL of the uploaded image
-    const newProduct = await prisma.product.create({
-      // other fields
-      image: result , // Store as an object
-    });
-
- 
-
-    res.json({
-      success: true,
-      result,
-    });
-  } catch (error) {
-    console.log(error);
-    res.json({
-      success: false,
-      message: "Error occurred",
-    });
-  }
-};
 
 
 // Assuming you have an image upload utility function called imageUploadUtil
@@ -52,25 +25,7 @@ exports.createProduct = async (req, res) => {
   const priceFloat = parseFloat(price);
   const promotionPriceFloat = promotionPrice ? parseFloat(promotionPrice) : null;
   const stockAvailableInt = parseInt(stockAvailable, 10);
-  let imageUrl = "";  // Variable to store the uploaded image URL
-
-  // Handle image upload if file is provided in the request
-  if (req.file) {
-    try {
-      // Directly upload the file buffer to Cloudinary or any image upload utility you're using
-      const uploadResult = await imageUploadUtil(req.file.buffer);  // Adjust based on your upload utility
-      imageUrl = uploadResult.secure_url;  // Get the URL of the uploaded image
-    } catch (error) {
-      console.log(error);
-      return res.json({
-        success: false,
-        message: "Error uploading image",
-      });
-    }
-  } else if (image) {
-    // If the image URL is passed in the request body, use it directly
-    imageUrl = image;
-  }
+  
      // Convert promotedBy to an array if it's provided as a string (wrap it in an array)
      const promotedByArray = Array.isArray(promotedBy) ? promotedBy : [promotedBy];
   try {
@@ -78,7 +33,7 @@ exports.createProduct = async (req, res) => {
     const newProduct = await prisma.product.create({
       data: {
         name,
-        image: imageUrl,  // Use the uploaded image URL or the one passed in the request
+        image,  // Use the uploaded image URL or the one passed in the request
         category,
         brandName,
         subBrandName,
