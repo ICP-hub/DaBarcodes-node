@@ -27,7 +27,15 @@ model Product {
   storeId          String
   description      String?
   isActivated      Boolean  @default(true)
+  isPromotion      Boolean  @default(false)
   stockAvailable   Int
+  promotionValidUntil DateTime?
+  promotedBy         String[]
+  status          Status @default(Active) 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+enum Status {
+  Active
+  Deactivated
 }
