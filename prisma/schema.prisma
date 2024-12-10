@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,28 +8,36 @@ datasource db {
 }
 
 model Product {
-  id               String   @id @default(uuid())   // UUID primary key
-  name             String
-  image            String?                          // URL or image path
-  category         String
-  brandName        String
-  subBrandName     String?
-  price            Float
-  weight           String
-  promotionPrice   Float?
-  supplierName     String
-  storeId          String
-  description      String?
-  isActivated      Boolean  @default(true)
-  isPromotion      Boolean  @default(false)
-  stockAvailable   Int
-  promotionValidUntil DateTime?
-  promotedBy         String[]
-  status          Status @default(Active) 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  productId           String     @id @default(uuid()) @unique
+  skuId               String
+  principleId         String
+  name                String
+  image               String
+  brandId             String
+  subBrandID          String?
+  category            String
+  subCategory         String
+  productType         String?
+  size                String
+  originalPrice       Float
+  productDescription  String?
+  isActivated         Boolean    @default(true)
+  isPromotion         Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  promotions          Promotion[]
 }
-enum Status {
-  Active
-  Deactivated
+
+model Promotion {
+  promotionId         String     @id @default(uuid()) @unique
+  promotionSKUID      String     @unique
+  promotionPrice      String
+  promotionDescription String?
+  promotionStartDate  DateTime
+  promotionEndDate    DateTime
+  promotedBy          String[]//optional
+  targetRetailer      String[]//optinal
+  promotionType       String?
+  productId           String
+  product             Product    @relation(fields: [productId], references: [productId],onDelete: Cascade)
 }

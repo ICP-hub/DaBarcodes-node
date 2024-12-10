@@ -4,6 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const PORT = process.env.PORT || 8000;
 const productRoutes = require("./Routes/product");
+const promotionRoutes = require("./Routes/promotion");
 // * Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -16,6 +17,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use("/product", productRoutes);
+app.use("/promotion", promotionRoutes);
 
 app.get("/", (req, res) => {
   return res.send("Hi Everyone.");
