@@ -1,15 +1,19 @@
 const prisma = require("../DB/dbconfig");
-
+const { Storage } = require("@google-cloud/storage");
+const path = require("path");
 // Assuming you have an image upload utility function called imageUploadUtil
 
 // Adjust import path as needed
-
+const storage = new Storage({
+  keyFilename: path.join(__dirname, "../dabarcodes.json"), // Replace with your credentials file path
+  projectId: process.env.PROJECT_ID, // Replace with your Google Cloud project ID
+});
+const bucketName=process.env.BUCKET_NAME;
 exports.createProduct = async (req, res) => {
   const {
     skuId,
     principleId,
     name,
-    image,
     brandId,
     subBrandID,
     category,
@@ -20,6 +24,8 @@ exports.createProduct = async (req, res) => {
     productDescription,
     isActivated,
   } = req.body;
+
+  let imageUrl = null;
 
   try {
     // Validate the required fields
@@ -39,10 +45,6 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ error: "Category is required." });
     }
 
-    if (!subCategory) {
-      return res.status(400).json({ error: "Subcategory is required." });
-    }
-
     if (!size) {
       return res.status(400).json({ error: "Size is required." });
     }
@@ -51,18 +53,48 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ error: "Valid original price is required." });
     }
 
+    // Handle image upload if an image is provided
+    if (req.file) {
+      const bucket = storage.bucket(bucketName);
+      const blob = bucket.file(`products/${Date.now()}-${req.file.originalname}`);
+      const blobStream = blob.createWriteStream({
+        resumable: false,
+        contentType: req.file.mimetype,
+      });
+
+      try {
+        // Use a Promise to ensure the upload process completes
+        imageUrl = await new Promise((resolve, reject) => {
+          blobStream.on("error", (err) => {
+            reject(new Error(`Image upload failed: ${err.message}`));
+          });
+
+          blobStream.on("finish", () => {
+            const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
+            resolve(publicUrl); // Resolve the URL once upload is complete
+          });
+
+          blobStream.end(req.file.buffer); // End the stream
+        });
+
+        console.log("Image successfully uploaded:", imageUrl); // Confirm the URL
+      } catch (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: "Image upload failed." });
+      }
+    }
+
     // Create the product entry
     const newProduct = await prisma.product.create({
       data: {
-        productId: undefined, // Prisma will auto-handle this with the UUID generation
         skuId,
         principleId,
         name,
-        image: image || null,
+        image: imageUrl,
         brandId,
         subBrandID: subBrandID || null,
         category,
-        subCategory,
+        subCategory: subCategory || null,
         productType: productType || null,
         size,
         originalPrice: parseFloat(originalPrice),
@@ -83,6 +115,107 @@ exports.createProduct = async (req, res) => {
     });
   }
 };
+
+
+exports.createMultipleProducts = async (req, res) => {
+  let products = req.body; // Extract products array from the request body
+  const files = req.files; // Files uploaded via Multer
+ 
+  // Validate products data
+  if (!Array.isArray(products) || products.length === 0) {
+    return res.status(400).json({ error: "No product data provided." });
+  }
+
+ 
+  try {
+    const productPromises = products.map(async (product, index) => {
+      const {
+        skuId,
+        principleId,
+        name,
+        brandId,
+        subBrandID,
+        category,
+        subCategory,
+        productType,
+        size,
+        originalPrice,
+        productDescription,
+        isActivated,
+      } = product;
+
+      let imageUrl = null;
+
+      // Validate required fields
+      if (!skuId || !principleId || !name || !category || !size || !originalPrice || isNaN(parseFloat(originalPrice))) {
+        throw new Error("Missing required fields or invalid data.");
+      }
+
+      // Handle image upload if a file is provided
+      if (files && files[index]) {
+        const file = files[index]; // Match file with product based on index
+        const bucket = storage.bucket(bucketName);
+        const blob = bucket.file(`products/${Date.now()}-${file.originalname}`);
+        const blobStream = blob.createWriteStream({
+          resumable: false,
+          contentType: file.mimetype,
+        });
+
+        try {
+          imageUrl = await new Promise((resolve, reject) => {
+            blobStream.on("error", (err) => {
+              reject(new Error(`Image upload failed: ${err.message}`));
+            });
+
+            blobStream.on("finish", () => {
+              const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
+              resolve(publicUrl); // Resolve the URL once upload is complete
+            });
+
+            blobStream.end(file.buffer); // End the stream
+          });
+          console.log("Image successfully uploaded:", imageUrl);
+        } catch (err) {
+          throw new Error("Image upload failed.");
+        }
+      }
+
+      // Create the product entry in the database
+      return prisma.product.create({
+        data: {
+          skuId,
+          principleId,
+          name,
+          image: imageUrl,
+          brandId,
+          subBrandID: subBrandID || null,
+          category,
+          subCategory: subCategory || null,
+          productType: productType || null,
+          size,
+          originalPrice: parseFloat(originalPrice),
+          productDescription: productDescription || null,
+          isActivated: isActivated !== undefined ? isActivated : true,
+        },
+      });
+    });
+
+    // Wait for all product creation operations to complete
+    const createdProducts = await Promise.all(productPromises);
+
+    res.status(201).json({
+      message: "Products created successfully",
+      data: createdProducts,
+    });
+  } catch (error) {
+    console.error("Error creating products:", error.message);
+    res.status(500).json({
+      error: "Error creating products",
+      details: error.message,
+    });
+  }
+};
+
 
 // Adjust with your Prisma client import
 
@@ -106,6 +239,8 @@ exports.createAllProducts = async (req, res) => {
     });
   }
 };
+
+
 
 // Get all products
 exports.getProducts = async (req, res) => {
