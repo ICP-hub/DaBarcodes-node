@@ -118,15 +118,23 @@ exports.createProduct = async (req, res) => {
 
 
 exports.createMultipleProducts = async (req, res) => {
-  let products = req.body; // Extract products array from the request body
+  // Extract products array from the request body
   const files = req.files; // Files uploaded via Multer
- 
+  let products = [];
+    if (typeof req.body.products === "string") {
+      try {
+        products = JSON.parse(req.body.products); // Convert string to array
+      } catch (err) {
+        return res.status(400).json({ error: "Invalid products format. Unable to parse JSON." });
+      }
+    } else {
+      products = req.body.products; // Already an array
+    }
   // Validate products data
   if (!Array.isArray(products) || products.length === 0) {
     return res.status(400).json({ error: "No product data provided." });
   }
 
- 
   try {
     const productPromises = products.map(async (product, index) => {
       const {
@@ -147,7 +155,15 @@ exports.createMultipleProducts = async (req, res) => {
       let imageUrl = null;
 
       // Validate required fields
-      if (!skuId || !principleId || !name || !category || !size || !originalPrice || isNaN(parseFloat(originalPrice))) {
+      if (
+        !skuId ||
+        !principleId ||
+        !name ||
+        !category ||
+        !size ||
+        !originalPrice ||
+        isNaN(parseFloat(originalPrice))
+      ) {
         throw new Error("Missing required fields or invalid data.");
       }
 
@@ -180,24 +196,36 @@ exports.createMultipleProducts = async (req, res) => {
         }
       }
 
+     
+
+      // Prepare product data for Prisma
+      const productData = {
+        skuId,
+        principleId,
+        name,
+        image: imageUrl || undefined, // Use imageUrl dynamically
+        brandId,
+        subBrandID: subBrandID || undefined,
+        category,
+        subCategory: subCategory || undefined,
+        productType: productType || undefined,
+        size,
+        originalPrice: parseFloat(originalPrice),
+        productDescription: productDescription || undefined,
+        isActivated: isActivated !== undefined ? isActivated : true,
+      };
+
+     
+
       // Create the product entry in the database
-      return prisma.product.create({
-        data: {
-          skuId,
-          principleId,
-          name,
-          image: imageUrl,
-          brandId,
-          subBrandID: subBrandID || null,
-          category,
-          subCategory: subCategory || null,
-          productType: productType || null,
-          size,
-          originalPrice: parseFloat(originalPrice),
-          productDescription: productDescription || null,
-          isActivated: isActivated !== undefined ? isActivated : true,
-        },
-      });
+      try {
+        return await prisma.product.create({
+          data: productData,
+        });
+      } catch (error) {
+        console.error("Error creating product in Prisma:", error.message);
+        throw error; // Rethrow to handle in the main catch block
+      }
     });
 
     // Wait for all product creation operations to complete
@@ -215,7 +243,6 @@ exports.createMultipleProducts = async (req, res) => {
     });
   }
 };
-
 
 // Adjust with your Prisma client import
 
